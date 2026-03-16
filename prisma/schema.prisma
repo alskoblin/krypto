@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String        @id @default(uuid())
+  email     String        @unique
+  phone     String?
+  fullName  String
+  status    String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  wallets   Wallet[]
+  addresses BlockchainAddress[]
+  transactions Transaction[]
+  tradeOrders TradeOrder[]
+}
+
+model Wallet {
+  id            String              @id @default(uuid())
+  userId        String
+  status        String
+  label         String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balances      Balance[]
+  transactions  Transaction[]
+  tradeOrders   TradeOrder[]
+  addresses     BlockchainAddress[]
+  blockchainTxs BlockchainTx[]
+}
+
+model Asset {
+  code       String    @id
+  name       String
+  type       String
+  precision  Int
+  isActive   Boolean   @default(true)
+  networkId  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  network    BlockchainNetwork? @relation(fields: [networkId], references: [id], onDelete: SetNull)
+  balances   Balance[]
+  transactions Transaction[]
+}
+
+model Balance {
+  id              String   @id @default(uuid())
+  walletId         String
+  assetCode        String
+  assetType        String
+  availableAmount  Decimal  @db.Decimal(30, 8)
+  lockedAmount     Decimal  @db.Decimal(30, 8)
+  totalAmount      Decimal  @db.Decimal(30, 8)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  wallet           Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset            Asset    @relation(fields: [assetCode], references: [code], onDelete: Restrict)
+
+  @@unique([walletId, assetCode])
+}
+
+model Transaction {
+  id             String      @id @default(uuid())
+  userId         String
+  walletId       String
+  type           String
+  status         String
+  assetCode      String
+  amount         Decimal     @db.Decimal(30, 8)
+  feeAmount      Decimal     @db.Decimal(30, 8)
+  netAmount      Decimal     @db.Decimal(30, 8)
+  reference      String?
+  description    String?
+  blockchainTxId String?
+  completedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet         Wallet      @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  asset          Asset       @relation(fields: [assetCode], references: [code], onDelete: Restrict)
+  ledgerEntries  LedgerEntry[]
+}
+
+model LedgerEntry {
+  id            String      @id @default(uuid())
+  transactionId String
+  walletId       String
+  assetCode      String
+  entryType      String
+  amount         Decimal     @db.Decimal(30, 8)
+  balanceBefore  Decimal     @db.Decimal(30, 8)
+  balanceAfter   Decimal     @db.Decimal(30, 8)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  transaction    Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model TradeOrder {
+  id                    String           @id @default(uuid())
+  userId                String
+  walletId              String
+  side                  String
+  status                String
+  baseAssetCode         String
+  quoteAssetCode        String
+  requestedAmount       Decimal          @db.Decimal(30, 8)
+  limitPrice            Decimal?         @db.Decimal(30, 8)
+  filledAmount          Decimal          @db.Decimal(30, 8)
+  averageExecutionPrice Decimal?         @db.Decimal(30, 8)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  executions            TradeExecution[]
+}
+
+model TradeExecution {
+  id               String    @id @default(uuid())
+  orderId          String
+  baseAssetCode    String
+  quoteAssetCode   String
+  executedAmount   Decimal   @db.Decimal(30, 8)
+  executedPrice    Decimal   @db.Decimal(30, 8)
+  quoteTotal       Decimal   @db.Decimal(30, 8)
+  feeAmount        Decimal   @db.Decimal(30, 8)
+  buyTransactionId String?
+  sellTransactionId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  order            TradeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model BlockchainNetwork {
+  id          String              @id @default(uuid())
+  code        String              @unique
+  name        String
+  kind        String
+  chainId     String?
+  rpcUrl      String?
+  explorerUrl String?
+  isTestnet   Boolean             @default(true)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  assets      Asset[]
+  addresses   BlockchainAddress[]
+  blockchainTxs BlockchainTx[]
+}
+
+model BlockchainAddress {
+  id         String    @id @default(uuid())
+  userId     String
+  walletId   String
+  networkId  String
+  assetCode  String?
+  address    String
+  publicKey  String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet     Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  network    BlockchainNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+}
+
+model BlockchainTx {
+  id            String    @id @default(uuid())
+  networkId      String
+  walletId       String
+  transactionId  String?
+  hash           String    @unique
+  fromAddress    String
+  toAddress      String
+  assetCode      String
+  amount         Decimal   @db.Decimal(30, 8)
+  status         String
+  blockNumber    Int?
+  confirmations  Int       @default(0)
+  confirmedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  network        BlockchainNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  wallet         Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model ExchangeRate {
+  id             String   @id @default(uuid())
+  baseAssetCode  String
+  quoteAssetCode String
+  rate           Decimal  @db.Decimal(30, 8)
+  source         String
+  capturedAt     DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([baseAssetCode, quoteAssetCode])
+}

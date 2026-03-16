@@ -1,0 +1,19 @@
+services:
+  krypto:
+    image: launch:latest
+    container_name: krypto
+    environment:
+      DATABASE_URL: "postgresql://aleksandrskoblin:183207@postgres:5432/krypto?schema=public"
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: aleksandrskoblin
+      POSTGRES_PASSWORD: 183207
+      POSTGRES_DB: krypto
+    ports:
+      - "5432:5432"
