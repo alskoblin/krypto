@@ -1,8 +1,15 @@
 FROM node:20-slim
-COPY . .
+
 WORKDIR /app
-RUN npm install
-RUN npm install @prisma/client @prisma/adapter-pg pg
-RUN npm install -D prisma
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+RUN npx prisma generate
 RUN npm run build
-CMD ["npm","run","start"]
+
+ENV NODE_ENV=production
+
+CMD ["npm", "run", "start:prod"]
