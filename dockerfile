@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
-
+RUN npm install @prisma/adapter-pg pg @prisma/client
+RUN npm install -D prisma
 COPY . .
 
 ARG DATABASE_URL
