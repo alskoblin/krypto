@@ -3,5 +3,4 @@ export class CreateAssetDto {
   name!: string;
   type!: string;
   precision!: number;
-  networkId?: string;
 }

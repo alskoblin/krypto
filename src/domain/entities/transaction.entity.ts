@@ -7,8 +7,7 @@ export const TRANSACTION_TYPE = {
   SELL: 'sell',
   TRANSFER_IN: 'transfer_in',
   TRANSFER_OUT: 'transfer_out',
-  FEE: 'fee',
-  ADJUSTMENT: 'adjustment',
+  PURCHASE: 'purchase',
 } as const;
 
 export type TransactionType =

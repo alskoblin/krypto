@@ -8,7 +8,7 @@ RUN npm install @prisma/adapter-pg pg @prisma/client
 RUN npm install -D prisma
 COPY . .
 
-ARG DATABASE_URL
+ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/krypto?schema=public
 ENV DATABASE_URL=${DATABASE_URL}
 
 RUN npx prisma generate

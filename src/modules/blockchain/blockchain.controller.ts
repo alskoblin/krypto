@@ -8,6 +8,7 @@ export class BlockchainController {
   @Get('networks')
   getNetworks() {
     return this.prisma.blockchainNetwork.findMany({
+      where: { code: 'ton-sandbox' },
       orderBy: { createdAt: 'asc' },
     });
   }

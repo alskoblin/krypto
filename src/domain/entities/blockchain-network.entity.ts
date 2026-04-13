@@ -1,11 +1,7 @@
 import { BaseEntity } from './base.entity';
 
 export const BLOCKCHAIN_NETWORK_KIND = {
-  EVM: 'evm',
   TON: 'ton',
-  BITCOIN: 'bitcoin',
-  SOLANA: 'solana',
-  CUSTOM: 'custom',
 } as const;
 
 export type BlockchainNetworkKind =

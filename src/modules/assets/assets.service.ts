@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ASSET_TYPE, BLOCKCHAIN_NETWORK_KIND } from '../../domain';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 
@@ -21,6 +22,11 @@ export class AssetsService {
       throw new BadRequestException('precision is required');
     }
 
+    const normalizedType = payload.type.toLowerCase();
+    if (normalizedType !== ASSET_TYPE.FIAT && normalizedType !== ASSET_TYPE.CRYPTO) {
+      throw new BadRequestException('type must be fiat or crypto');
+    }
+
     const existingAsset = await this.prisma.asset.findUnique({
       where: { code: payload.code },
     });
@@ -29,14 +35,35 @@ export class AssetsService {
       throw new BadRequestException('Asset with this code already exists');
     }
 
+    let networkId: string | null = null;
+    if (normalizedType === ASSET_TYPE.CRYPTO) {
+      const network = await this.prisma.blockchainNetwork.upsert({
+        where: { code: 'ton-sandbox' },
+        update: {
+          isActive: true,
+        },
+        create: {
+          code: 'ton-sandbox',
+          name: 'TON Sandbox',
+          kind: BLOCKCHAIN_NETWORK_KIND.TON,
+          chainId: 'sandbox',
+          rpcUrl: null,
+          explorerUrl: null,
+          isTestnet: true,
+          isActive: true,
+        },
+      });
+      networkId = network.id;
+    }
+
     return this.prisma.asset.create({
       data: {
         code: payload.code,
         name: payload.name,
-        type: payload.type,
+        type: normalizedType,
         precision: Number(payload.precision),
         isActive: true,
-        networkId: payload.networkId ?? null,
+        networkId,
       },
     });
   }

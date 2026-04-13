@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Balance, Prisma } from '@prisma/client';
+import { Asset, Balance, Prisma } from '@prisma/client';
 import {
   ASSET_TYPE,
   TRANSACTION_STATUS,
@@ -62,6 +62,9 @@ export class TradingService {
     const quoteDelta = amount * price;
     const now = new Date();
 
+    await this.ensureAsset(payload.baseAssetCode, ASSET_TYPE.CRYPTO);
+    await this.ensureAsset(payload.quoteAssetCode, ASSET_TYPE.FIAT);
+
     let baseBalance = await this.prisma.balance.findUnique({
       where: {
         walletId_assetCode: {
@@ -72,7 +75,6 @@ export class TradingService {
     });
 
     if (!baseBalance) {
-      await this.createAssetIfMissing(payload.baseAssetCode, ASSET_TYPE.CRYPTO);
       baseBalance = await this.prisma.balance.create({
         data: {
           walletId: payload.walletId,
@@ -95,7 +97,6 @@ export class TradingService {
     });
 
     if (!quoteBalance) {
-      await this.createAssetIfMissing(payload.quoteAssetCode, ASSET_TYPE.FIAT);
       quoteBalance = await this.prisma.balance.create({
         data: {
           walletId: payload.walletId,
@@ -151,12 +152,24 @@ export class TradingService {
       },
     });
 
+    const linkedAddress = await this.prisma.blockchainAddress.findFirst({
+      where: {
+        walletId: payload.walletId,
+        isActive: true,
+        network: {
+          code: 'ton-sandbox',
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
     const blockchainTx = await this.tonSandboxService.simulateAssetTransfer({
-      walletId: payload.walletId,
+      address: linkedAddress?.address ?? '',
       transactionId: transaction.id,
       assetCode: payload.baseAssetCode,
       amount: payload.amount,
       assetType: ASSET_TYPE.CRYPTO,
+      direction: side === TRADE_SIDE.SELL ? 'outbound' : 'inbound',
     });
 
     if (side === TRADE_SIDE.BUY) {
@@ -249,13 +262,18 @@ export class TradingService {
     };
   }
 
-  private async createAssetIfMissing(assetCode: string, assetType: string) {
+  private async ensureAsset(assetCode: string, assetType: string): Promise<Asset> {
     const asset = await this.prisma.asset.findUnique({ where: { code: assetCode } });
     if (asset) {
-      return;
+      if (asset.type !== assetType) {
+        throw new BadRequestException(
+          `Asset ${assetCode} must have type ${assetType}`,
+        );
+      }
+      return asset;
     }
 
-    await this.prisma.asset.create({
+    return this.prisma.asset.create({
       data: {
         code: assetCode,
         name: assetCode,

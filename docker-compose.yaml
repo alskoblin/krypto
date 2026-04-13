@@ -1,11 +1,23 @@
 services:
   krypto:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: "postgresql://aleksandrskoblin:183207@postgres:5432/krypto?schema=public"
     image: launch:latest
     container_name: krypto
     environment:
       DATABASE_URL: "postgresql://aleksandrskoblin:183207@postgres:5432/krypto?schema=public"
+      PRIVATE_KEY_ENCRYPTION_KEY: "${PRIVATE_KEY_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
     depends_on:
       - postgres
+    command: >
+      sh -c "until npx prisma db push; do
+      echo 'Waiting for postgres...';
+      sleep 2;
+      done;
+      npm run start"
     ports:
       - "3000:3000"
 

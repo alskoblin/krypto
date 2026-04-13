@@ -8,15 +8,53 @@ datasource db {
 model User {
   id        String        @id @default(uuid())
   email     String        @unique
+  passwordHash String     @default("")
   phone     String?
   fullName  String
+  role      String        @default("user")
   status    String
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   wallets   Wallet[]
+  bankCards BankCard[]
+  monthlyBudgets MonthlyBudget[]
   addresses BlockchainAddress[]
   transactions Transaction[]
   tradeOrders TradeOrder[]
+}
+
+model BankCard {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  brand      String
+  last4      String
+  expMonth   Int
+  expYear    Int
+  holderName String?
+  status     String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, isDefault])
+}
+
+model MonthlyBudget {
+  id          String   @id @default(uuid())
+  userId      String
+  assetCode   String
+  year        Int
+  month       Int
+  limitAmount Decimal  @db.Decimal(30, 8)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetCode, year, month])
+  @@index([userId, year, month])
 }
 
 model Wallet {
@@ -160,6 +198,9 @@ model BlockchainAddress {
   assetCode  String?
   address    String
   publicKey  String?
+  encryptedPrivateKey String?
+  keyAlgorithm String?
+  keyEncryptionVersion String?
   isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
